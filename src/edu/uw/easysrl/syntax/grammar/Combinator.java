@@ -5,10 +5,12 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import edu.uw.easysrl.dependencies.DependencyStructure;
 import edu.uw.easysrl.dependencies.UnlabelledDependency;
@@ -210,6 +212,9 @@ public abstract class Combinator {
 	}
 
 	private static class Conjunction extends Combinator {
+		private final Logic subeventSemantics = LogicParser.
+				fromString("#p#e . \\exists e1[sim(e,e1) & p(e1)]",
+						Category.valueOf("S/S"));
 
 		private Conjunction() {
 			super(RuleType.CONJ);
@@ -277,17 +282,40 @@ public abstract class Combinator {
 			else {
 				// Boolean conjunctions
 				// conj + S\NP
-				// conj + #x#e.foo(x,e) --> #p#x#e . foo(x,e) & p(x,e)
+				// conj + #x#e.foo(x,e) --> #p#x#e . \exists e1[sim(e,e1) & p(x,e1) ] & \exists e2[sim(e,e2) & foo(x,e2)]
 				final Variable p = new Variable(right.getType());
 				final List<Variable> vars = new ArrayList<>();
 				// TODO very hacky. Move this to the lexicon.
 				final Connective connective = left.toString().equals("or") ? Connective.OR : Connective.AND;
 				vars.add(p);
 				vars.addAll(right.getArguments());
+
+				Logic leftSubevent = composeSentence(subeventSemantics.alphaReduce(),
+						LambdaExpression.make(new AtomicSentence(p, right.getArguments()), right.getArguments()));
+				Logic rightSubevent = composeSentence(subeventSemantics.alphaReduce(), right);
+
+				for (Variable v : right.getArguments()) {
+					rightSubevent = rightSubevent.apply(v);
+					leftSubevent = leftSubevent.apply(v);
+				}
+
 				return LambdaExpression.make(ConnectiveSentence.make(connective,
-						new AtomicSentence(p, right.getArguments()),
-						(Sentence) ((LambdaExpression) right).getStatement()), vars);
+						(Sentence) rightSubevent, (Sentence) leftSubevent), vars);
 			}
+		}
+
+		private static Logic composeSentence(Logic left, Logic right) {
+			List<Variable> zs = right.getArguments().subList(0,  right.getArguments().size() - 1)
+					.stream()
+					.map(Logic::getType)
+					.map(Variable::new)
+					.collect(Collectors.toList());
+			Collections.reverse(zs);
+			Logic fz = right;
+			for (final Variable z : zs) {
+				fz = fz.apply(z);
+			}
+			return LambdaExpression.make(left.apply(fz), zs);
 		}
 	}
 
@@ -642,7 +670,7 @@ public abstract class Combinator {
 
 		private final Category ngVP = Category.valueOf("S[ng]\\NP");
 		private final Category pssVP = Category.valueOf("S[pss]\\NP");
-		private final Logic semantics = LogicParser.fromString("#p#q#x#e . q(x,e) & p(x,e)",
+		private final Logic semantics = LogicParser.fromString("#p#q#x#e . q(x,e) & \\exists e1[p(x,e1) & ARG(e, e1)] ",
 				Category.make(Category.ADVERB, Slash.FWD, ngVP));
 
 		private final DependencyStructure dependencyStructure = DependencyStructure.makeUnaryRuleTransformation(
