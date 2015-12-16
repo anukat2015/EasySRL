@@ -51,6 +51,8 @@ public class DefaultLexicon extends Lexicon {
 	private final static List<SRLLabel> noLabels = Arrays.asList(SRLFrame.NONE, SRLFrame.NONE, SRLFrame.NONE,
 			SRLFrame.NONE, SRLFrame.NONE, SRLFrame.NONE);
 
+	private final static Category toCategory = Category.valueOf("(S\\NP)/(S[to]\\NP)");
+
 	@Override
 	public Logic getEntry(final String word, final String pos, final Category category, final Coindexation coindexation,
 			final Optional<CCGandSRLparse> parse, final int wordIndex) {
@@ -232,6 +234,7 @@ public class DefaultLexicon extends Lexicon {
 		final List<Logic> argumentsOfArgument = new ArrayList<>(argument.getNumberOfArguments());
 		final List<Variable> toQuantify = new ArrayList<>();
 		Coindexation coindexationOfArgument = coindexation.getRight();
+
 		for (int i = argument.getNumberOfArguments(); i > 0; i--) {
 			// Iterate over arguments of argument.
 			Logic argumentSemantics;
@@ -290,8 +293,15 @@ public class DefaultLexicon extends Lexicon {
 		if (toQuantify.contains(argumentsOfArgument.get(argumentsOfArgument.size() - 1))
 				&& !argumentsOfArgument.contains(head)) {
 			// Link the head of the argument back to the head of the construction.
-			argumentSemantics = ConnectiveSentence.make(Connective.AND, argumentSemantics, new AtomicSentence(
-					argumentLabel, argumentsOfArgument.get(argumentsOfArgument.size() - 1), head));
+			List<Sentence> conjunctionChildren = new ArrayList<>(Arrays.asList(argumentSemantics, new AtomicSentence(
+					argumentLabel, argumentsOfArgument.get(argumentsOfArgument.size() - 1), head)));
+
+			// Add any additional links from the head of the argument to the head of the construction.
+			if (toCategory.matches(category)) {
+				conjunctionChildren.add(new AtomicSentence(
+						"before", argumentsOfArgument.get(argumentsOfArgument.size() - 1), head));
+			}
+			argumentSemantics = ConnectiveSentence.make(Connective.AND, conjunctionChildren.toArray(new Sentence[0]));
 		}
 
 		// Existentially quantify any missing variables
