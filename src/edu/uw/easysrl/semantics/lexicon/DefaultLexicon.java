@@ -299,7 +299,7 @@ public class DefaultLexicon extends Lexicon {
 			// Add any additional links from the head of the argument to the head of the construction.
 			if (toCategory.matches(category)) {
 				conjunctionChildren.add(new AtomicSentence(
-						"before", argumentsOfArgument.get(argumentsOfArgument.size() - 1), head));
+						"before", head, argumentsOfArgument.get(argumentsOfArgument.size() - 1)));
 			}
 			argumentSemantics = ConnectiveSentence.make(Connective.AND, conjunctionChildren.toArray(new Sentence[0]));
 		}
