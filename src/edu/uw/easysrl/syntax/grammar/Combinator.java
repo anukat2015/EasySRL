@@ -213,11 +213,7 @@ public abstract class Combinator {
 
 	private static class Conjunction extends Combinator {
 		private final Logic subeventSemantics = LogicParser.
-<<<<<<< HEAD
 				fromString("#p#e . \\exists e1[subevent(e,e1) & p(e1)]",
-=======
-				fromString("#p#e . \\exists e1[sim(e,e1) & p(e1)]",
->>>>>>> 774354f015f9efee3798a3357b1b2446c105bdc6
 						Category.valueOf("S/S"));
 
 		private Conjunction() {
